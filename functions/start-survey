@@ -1,0 +1,55 @@
+const airtable = require("airtable");
+
+exports.handler = function (context, event, callback) {
+
+const base = new airtable({
+   apiKey: context.AIRTABLE_API_KEY,
+ }).base(context.AIRTABLE_BASE_ID);
+ const client = context.getTwilioClient();
+
+ return base("contacts")
+   .select()
+   .all()
+   .then((records) => {
+     records.forEach((record) => {
+       if (record.get("Survey_Status") === "pending") {
+     
+         var name = record.get("Name");
+         var phone = record.get("Phone");
+         var service = record.get("Service_Used");
+         var record_id = record.id;
+         
+         let params_list = {
+           name: name,
+           phone: phone,
+           service: service,
+           record_id: record_id
+         }
+         
+         console.log(params_list);
+         
+         
+         client.studio.v1.flows('FWe21c0aa313f7c7568f0f89c17ef4e346').executions.create(
+       {
+         to: params_list.phone,
+         from: context.TWILIO_PHONE_NUMBER,
+         parameters: JSON.stringify(params_list)
+      
+       }
+     )
+     .then(function(execution) {
+       console.log("Execution Id:" + execution.sid);
+       callback(null, "Message sent via studio function to " + JSON.stringify(params_list.phone) );
+           
+     })
+     .catch(err => callback(err));
+
+       }
+     });
+   
+   })
+   .catch((error) => {
+     callback(error);
+   });
+
+}

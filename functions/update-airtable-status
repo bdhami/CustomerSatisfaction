@@ -1,0 +1,50 @@
+const airtable = require("airtable");
+// This is your new function. To start, set the name and path on the left.
+
+exports.handler = function(context, event, callback) {
+  // Here's an example of setting up some TWiML to respond to with this function
+
+const base = new airtable(
+  {apiKey: context.AIRTABLE_API_KEY})
+  .base(context.AIRTABLE_BASE_ID);
+ 
+  let record_id = event.record_id;
+  // let phone = event.phone;
+  // let service = event.service;
+  let survey_status = event.survey_status;
+
+console.log("Record ID received from Studio: " + JSON.stringify(record_id));
+
+base('contacts').update([
+  {
+    "id": record_id,
+    //"id": "rec9fnVUvJHmzSdFu",
+    "fields": {
+      // "Name": "Diksha Chawla",
+      // "Phone": "+18646507758",
+      // "Service_Used": "Apple",
+      "Survey_Status": survey_status
+    }
+  }
+  // {
+  //   "id": "recGc6jp3NAb7eCTc",
+  //   "fields": {
+  //     "Name": "Binesh Dhami",
+  //     "Phone": "+13528707097",
+  //     "Service_Used": "Banana",
+  //     "Survey_Status": "ignore"
+  //   }
+  // }
+], function(err, records) {
+  if (err) {
+    console.error(err);
+    throw err;
+  }
+  records.forEach(function(record) {
+    console.log("Updated Status of: " + record_id + "to " + survey_status);
+    callback(null, "Success!");
+  });
+});
+
+
+};

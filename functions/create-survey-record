@@ -1,0 +1,41 @@
+const airtable = require("airtable");
+exports.handler = function (context, event, callback) {
+const base = new airtable(
+  {apiKey: context.AIRTABLE_API_KEY})
+  .base(context.AIRTABLE_BASE_ID);
+ 
+  let name = event.name;
+  let phone = event.phone;
+  let service = event.service;
+  let initial_rating = event.initial_rating;
+  
+  console.log("Create Airtable Record")
+ 
+  
+  console.log("Rating: " +  name + " " + service + " " + initial_rating);
+  
+   base("survey").create([
+     {
+      "fields": {
+        "Phone": phone,
+        "Name": name,
+        "Service": service,
+        "Initial_Rating": initial_rating
+      }
+     }
+     
+   ], function(err, records) {
+  if (err) {
+    console.error(err);
+    throw err;
+  }
+  
+  else{
+   records.forEach(function (record) {
+    console.log("create-survey-record: " + record.getId());
+    callback(null, "Success!");
+    
+  });
+  }
+});
+}

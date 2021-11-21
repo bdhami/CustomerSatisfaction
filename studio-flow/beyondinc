@@ -1,0 +1,557 @@
+{
+  "description": "BeyondInc",
+  "states": [
+    {
+      "name": "Trigger",
+      "type": "trigger",
+      "transitions": [
+        {
+          "event": "incomingMessage"
+        },
+        {
+          "next": "split_confirmation",
+          "event": "incomingCall"
+        },
+        {
+          "next": "send_initial_survey",
+          "event": "incomingRequest"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -50,
+          "y": -390
+        }
+      }
+    },
+    {
+      "name": "send_initial_survey",
+      "type": "send-and-wait-for-reply",
+      "transitions": [
+        {
+          "next": "update_airtable_status_sent",
+          "event": "incomingMessage"
+        },
+        {
+          "next": "update_airtable_status-sent-1",
+          "event": "timeout"
+        },
+        {
+          "event": "deliveryFailure"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 210,
+          "y": -200
+        },
+        "from": "{{flow.channel.address}}",
+        "body": "Hi {{flow.data.name}}, thanks for using our {{flow.data.service}} service. On a scale of 1-5, how would you rate your overall experience?  Reply Stop to unsubscribe.",
+        "timeout": "3600"
+      }
+    },
+    {
+      "name": "split_confirmation",
+      "type": "split-based-on",
+      "transitions": [
+        {
+          "next": "send_initial_survey",
+          "event": "noMatch"
+        },
+        {
+          "next": "send_confirmation_sms",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "1",
+              "arguments": [
+                "{{widgets.send_initial_survey.inbound.Body}}"
+              ],
+              "type": "equal_to",
+              "value": "5"
+            }
+          ]
+        },
+        {
+          "next": "update_airtable_rating",
+          "event": "match",
+          "conditions": [
+            {
+              "friendly_name": "2",
+              "arguments": [
+                "{{widgets.send_initial_survey.inbound.Body}}"
+              ],
+              "type": "regex",
+              "value": "[1-4]"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "input": "{{widgets.send_initial_survey.inbound.Body}}",
+        "offset": {
+          "x": -200,
+          "y": 90
+        }
+      }
+    },
+    {
+      "name": "send_confirmation_sms",
+      "type": "send-message",
+      "transitions": [
+        {
+          "event": "sent"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -440,
+          "y": 340
+        },
+        "from": "{{flow.channel.address}}",
+        "to": "{{contact.channel.address}}",
+        "body": "Thank you for your response. We're happy that you are happy with the service. Please call us at {{flow.channel.address}} if you need further assistance."
+      }
+    },
+    {
+      "name": "send_question1_sms",
+      "type": "send-and-wait-for-reply",
+      "transitions": [
+        {
+          "next": "update_airtable_answer1",
+          "event": "incomingMessage"
+        },
+        {
+          "event": "timeout"
+        },
+        {
+          "event": "deliveryFailure"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 120,
+          "y": 560
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "body": "What can we do better?",
+        "timeout": "3600"
+      }
+    },
+    {
+      "name": "send_thankyou_message",
+      "type": "send-message",
+      "transitions": [
+        {
+          "event": "sent"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 740,
+          "y": 1700
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "to": "{{contact.channel.address}}",
+        "body": "Thank you for your input. We have recorded your responses. Below is a copy of your response for your record :\n\nQuestion: On a scale of 1-5, how would you rate your overall experience?  Reply Stop to unsubscribe.\n\nAnswer: {{widgets.send_initial_survey.inbound.Body}} \n\nQuestion: What can we do better?\n\nAnswer: {{widgets.send_question1_sms.inbound.Body}} \n\nQuestion: On a scale of 1-5, how likely are you to refer this service to a friend?\n\nAnswer: {{widgets.send_question2_sms.inbound.Body}} \n\nQuestion: Can we contact you via a phone call if we need to further discuss this issue with you?\n\nAnswer: {{widgets.send_question3_sms.inbound.Body}} \n\n\nWe will reach out to you for more information if you answered YES to the last question. Please reply STOP to unsubscribe at anytime."
+      }
+    },
+    {
+      "name": "update_airtable_rating",
+      "type": "run-function",
+      "transitions": [
+        {
+          "next": "send_question1_sms",
+          "event": "success"
+        },
+        {
+          "event": "fail"
+        }
+      ],
+      "properties": {
+        "service_sid": "ZS5e1d56faa52773c8094b9554e15afad0",
+        "environment_sid": "ZEae6486a9edf6a05ba7e46de6f262d63c",
+        "offset": {
+          "x": 130,
+          "y": 340
+        },
+        "function_sid": "ZH361dbaf83bad076a35a034d74188cb44",
+        "parameters": [
+          {
+            "value": "{{widgets.send_initial_survey.inbound.Body}}",
+            "key": "initial_rating"
+          },
+          {
+            "value": "{{flow.data.service}}",
+            "key": "service"
+          },
+          {
+            "value": "{{flow.data.name}}",
+            "key": "name"
+          },
+          {
+            "value": "{{contact.channel.address}}",
+            "key": "phone"
+          }
+        ],
+        "url": "https://beyondinc-7271.twil.io/create-survey-record"
+      }
+    },
+    {
+      "name": "update_airtable_answer1",
+      "type": "run-function",
+      "transitions": [
+        {
+          "next": "send_question2_sms",
+          "event": "success"
+        },
+        {
+          "event": "fail"
+        }
+      ],
+      "properties": {
+        "service_sid": "ZS5e1d56faa52773c8094b9554e15afad0",
+        "environment_sid": "ZEae6486a9edf6a05ba7e46de6f262d63c",
+        "offset": {
+          "x": 880,
+          "y": 570
+        },
+        "function_sid": "ZHdb5ef3fa75e29d4d3535859a4c79b035",
+        "parameters": [
+          {
+            "value": "{{widgets.send_question1_sms.inbound.Body}}",
+            "key": "answer"
+          },
+          {
+            "value": "{{contact.channel.address}}",
+            "key": "phone"
+          },
+          {
+            "value": "{{flow.data.service}}",
+            "key": "service"
+          },
+          {
+            "value": "Answer1",
+            "key": "answer_index"
+          }
+        ],
+        "url": "https://beyondinc-7271.twil.io/update-airtable-answer"
+      }
+    },
+    {
+      "name": "send_question2_sms",
+      "type": "send-and-wait-for-reply",
+      "transitions": [
+        {
+          "next": "update_airtable_answer2",
+          "event": "incomingMessage"
+        },
+        {
+          "event": "timeout"
+        },
+        {
+          "event": "deliveryFailure"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 110,
+          "y": 870
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "body": "On a scale of 1-5, how likely are you to refer this service to a friend?",
+        "timeout": "3600"
+      }
+    },
+    {
+      "name": "update_airtable_answer2",
+      "type": "run-function",
+      "transitions": [
+        {
+          "next": "send_question3_sms",
+          "event": "success"
+        },
+        {
+          "event": "fail"
+        }
+      ],
+      "properties": {
+        "service_sid": "ZS5e1d56faa52773c8094b9554e15afad0",
+        "environment_sid": "ZEae6486a9edf6a05ba7e46de6f262d63c",
+        "offset": {
+          "x": 710,
+          "y": 890
+        },
+        "function_sid": "ZHdb5ef3fa75e29d4d3535859a4c79b035",
+        "parameters": [
+          {
+            "value": "{{widgets.send_question2_sms.inbound.Body}}",
+            "key": "answer"
+          },
+          {
+            "value": "{{contact.channel.address}}",
+            "key": "phone"
+          },
+          {
+            "value": "{{flow.data.service}}",
+            "key": "service"
+          },
+          {
+            "value": "Answer2",
+            "key": "answer_index"
+          }
+        ],
+        "url": "https://beyondinc-7271.twil.io/update-airtable-answer"
+      }
+    },
+    {
+      "name": "send_question3_sms",
+      "type": "send-and-wait-for-reply",
+      "transitions": [
+        {
+          "next": "update_airtable_answer3",
+          "event": "incomingMessage"
+        },
+        {
+          "event": "timeout"
+        },
+        {
+          "event": "deliveryFailure"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": 150,
+          "y": 1180
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "body": "Can we contact you via a phone call if we need to further discuss this issue with you?",
+        "timeout": "3600"
+      }
+    },
+    {
+      "name": "update_airtable_answer3",
+      "type": "run-function",
+      "transitions": [
+        {
+          "next": "update_airtable_status_complete",
+          "event": "success"
+        },
+        {
+          "event": "fail"
+        }
+      ],
+      "properties": {
+        "service_sid": "ZS5e1d56faa52773c8094b9554e15afad0",
+        "environment_sid": "ZEae6486a9edf6a05ba7e46de6f262d63c",
+        "offset": {
+          "x": 730,
+          "y": 1200
+        },
+        "function_sid": "ZHdb5ef3fa75e29d4d3535859a4c79b035",
+        "parameters": [
+          {
+            "value": "{{widgets.send_question3_sms.inbound.Body}}",
+            "key": "answer"
+          },
+          {
+            "value": "{{contact.channel.address}}",
+            "key": "phone"
+          },
+          {
+            "value": "{{flow.data.service}}",
+            "key": "service"
+          },
+          {
+            "value": "Answer3",
+            "key": "answer_index"
+          }
+        ],
+        "url": "https://beyondinc-7271.twil.io/update-airtable-answer"
+      }
+    },
+    {
+      "name": "update_airtable_status_sent",
+      "type": "run-function",
+      "transitions": [
+        {
+          "next": "split_confirmation",
+          "event": "success"
+        },
+        {
+          "event": "fail"
+        }
+      ],
+      "properties": {
+        "service_sid": "ZS5e1d56faa52773c8094b9554e15afad0",
+        "environment_sid": "ZEae6486a9edf6a05ba7e46de6f262d63c",
+        "offset": {
+          "x": 250,
+          "y": 70
+        },
+        "function_sid": "ZHa49f4374b443db42fae362f63a6979cd",
+        "parameters": [
+          {
+            "value": "sent",
+            "key": "survey_status"
+          },
+          {
+            "value": "{{contact.channel.address}}",
+            "key": "phone"
+          },
+          {
+            "value": "{{flow.data.service}}",
+            "key": "service"
+          },
+          {
+            "value": "{{flow.data.record_id}}",
+            "key": "record_id"
+          }
+        ],
+        "url": "https://beyondinc-7271.twil.io/update-airtable-status"
+      }
+    },
+    {
+      "name": "update_airtable_status-sent-1",
+      "type": "run-function",
+      "transitions": [
+        {
+          "event": "success"
+        },
+        {
+          "event": "fail"
+        }
+      ],
+      "properties": {
+        "service_sid": "ZS5e1d56faa52773c8094b9554e15afad0",
+        "environment_sid": "ZEae6486a9edf6a05ba7e46de6f262d63c",
+        "offset": {
+          "x": 670,
+          "y": 70
+        },
+        "function_sid": "ZHa49f4374b443db42fae362f63a6979cd",
+        "parameters": [
+          {
+            "value": "sent",
+            "key": "survey_status"
+          },
+          {
+            "value": "{{contact.channel.address}}",
+            "key": "phone"
+          },
+          {
+            "value": "{{flow.data.service}}",
+            "key": "service"
+          },
+          {
+            "value": "{{flow.data.record_id}}",
+            "key": "record_id"
+          }
+        ],
+        "url": "https://beyondinc-7271.twil.io/update-airtable-status"
+      }
+    },
+    {
+      "name": "update_airtable_status_complete",
+      "type": "run-function",
+      "transitions": [
+        {
+          "next": "send_thankyou_message",
+          "event": "success"
+        },
+        {
+          "event": "fail"
+        }
+      ],
+      "properties": {
+        "service_sid": "ZS5e1d56faa52773c8094b9554e15afad0",
+        "environment_sid": "ZEae6486a9edf6a05ba7e46de6f262d63c",
+        "offset": {
+          "x": 730,
+          "y": 1460
+        },
+        "function_sid": "ZHa49f4374b443db42fae362f63a6979cd",
+        "parameters": [
+          {
+            "value": "{{contact.channel.address}}",
+            "key": "phone"
+          },
+          {
+            "value": "{{flow.data.record_id}}",
+            "key": "record_id"
+          },
+          {
+            "value": "complete",
+            "key": "survey_status"
+          }
+        ],
+        "url": "https://beyondinc-7271.twil.io/update-airtable-status"
+      }
+    },
+    {
+      "name": "send_message_1",
+      "type": "send-message",
+      "transitions": [
+        {
+          "event": "sent"
+        },
+        {
+          "event": "failed"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -851,
+          "y": -221
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "to": "{{contact.channel.address}}"
+      }
+    },
+    {
+      "name": "send_and_reply_2",
+      "type": "send-and-wait-for-reply",
+      "transitions": [
+        {
+          "event": "incomingMessage"
+        },
+        {
+          "event": "timeout"
+        },
+        {
+          "event": "deliveryFailure"
+        }
+      ],
+      "properties": {
+        "offset": {
+          "x": -966,
+          "y": -160
+        },
+        "service": "{{trigger.message.InstanceSid}}",
+        "channel": "{{trigger.message.ChannelSid}}",
+        "from": "{{flow.channel.address}}",
+        "timeout": "3600"
+      }
+    }
+  ],
+  "initial_state": "Trigger",
+  "flags": {
+    "allow_concurrent_calls": true
+  }
+}
